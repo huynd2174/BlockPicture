@@ -364,6 +364,12 @@ export class LevelBlockSpawner extends Component {
         }
 
         for (const child of [...this.blocksRoot.children]) {
+            // Clean up dynamically created meshes and materials to prevent WebGL memory leak on Restart
+            const mrs = child.getComponentsInChildren(MeshRenderer);
+            for (const mr of mrs) {
+                if (mr.mesh) { mr.mesh.destroy(); mr.mesh = null; }
+                if (mr.material) { mr.material.destroy(); mr.material = null; }
+            }
             child.destroy();
         }
         this.blocksRoot.removeAllChildren();
