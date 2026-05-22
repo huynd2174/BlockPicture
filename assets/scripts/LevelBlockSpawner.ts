@@ -570,10 +570,8 @@ export class LevelBlockSpawner extends Component {
             block.setScale(new Vec3(1, 1, 1));
         }
 
-        const correctPos = block.position.clone();
-        
-        // Web Mobile Frustum Culling bug fix: Do not move block to -999, do not use setTimeout.
-        // We also skip alignVisualsToFootprint because the user's prefabs are already perfectly centered!
+        // Web Mobile frustum/worldBounds can be stale during spawn/restart.
+        // Keep blocks at their real board position and avoid deferred off-screen alignment.
         this.applyVisualOffset(block, def.visualOffsetX, def.visualOffsetZ);
 
         this.rebuildCellColliders(block, def.shape);

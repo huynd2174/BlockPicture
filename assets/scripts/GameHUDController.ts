@@ -206,36 +206,36 @@ export class GameHUDController extends Component {
     }
 
     private resolveSceneReferences() {
-        if (!this.levelSpawner) {
-            this.levelSpawner = this.findFirstNode(['BoardRoot', 'GameRoot/BoardRoot'])?.getComponent(LevelBlockSpawner) || null;
+        if (!this.levelSpawner?.isValid) {
+            this.levelSpawner = this.findFirstNode(['BoardRoot', 'GameRoot/BoardRoot', 'block/BoardRoot'])?.getComponent(LevelBlockSpawner) || null;
         }
 
-        if (!this.dragController) {
-            this.dragController = this.findFirstNode(['BoardRoot', 'GameRoot/BoardRoot'])?.getComponent(PuzzleDragController) || null;
+        if (!this.dragController?.isValid) {
+            this.dragController = this.findFirstNode(['BoardRoot', 'GameRoot/BoardRoot', 'block/BoardRoot'])?.getComponent(PuzzleDragController) || null;
         }
 
-        if (!this.restartButton) {
+        if (!this.restartButton?.isValid) {
             this.restartButton = this.findFirstNode([
                 'Canvas/TopPanel/ButtonReplay',
                 'block/Canvas/TopPanel/ButtonReplay',
             ])?.getComponent(Button) || null;
         }
 
-        if (!this.timerRootNode) {
+        if (!this.timerRootNode?.isValid) {
             this.timerRootNode = this.findFirstNode([
                 'Canvas/TopPanel/TimeFrame',
                 'block/Canvas/TopPanel/TimeFrame',
             ]);
         }
 
-        if (!this.timerLabel) {
+        if (!this.timerLabel?.isValid) {
             this.timerLabel = this.findFirstNode([
                 'Canvas/TopPanel/TimeFrame/TimeNumber',
                 'block/Canvas/TopPanel/TimeFrame/TimeNumber',
             ])?.getComponent(Label) || null;
         }
 
-        if (!this.targetItemsRootNode) {
+        if (!this.targetItemsRootNode?.isValid) {
             this.targetItemsRootNode = this.findFirstNode([
                 'Canvas/TopUI/TargetBar',
                 'block/Canvas/TopUI/TargetBar',
@@ -1204,7 +1204,7 @@ export class GameHUDController extends Component {
         this.boardPreview =
             this.levelSpawner?.node.getComponent(BoardPreview) ||
             this.dragController?.node.getComponent(BoardPreview) ||
-            this.findFirstNode(['BoardRoot', 'GameRoot/BoardRoot'])?.getComponent(BoardPreview) ||
+            this.findFirstNode(['BoardRoot', 'GameRoot/BoardRoot', 'block/BoardRoot'])?.getComponent(BoardPreview) ||
             null;
 
         return this.boardPreview;
