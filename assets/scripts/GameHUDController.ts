@@ -863,10 +863,15 @@ export class GameHUDController extends Component {
     }
 
     private stopTargetCollectSchedules() {
-        for (const stop of [...this.targetCollectStops]) {
-            stop();
-        }
+        const stops = Array.from(this.targetCollectStops);
         this.targetCollectStops.clear();
+
+        for (let i = 0; i < stops.length; i++) {
+            const stop = stops[i];
+            if (typeof stop === 'function') {
+                stop();
+            }
+        }
     }
 
     private findTargetItemsDeep(root: Node): Node[] {
