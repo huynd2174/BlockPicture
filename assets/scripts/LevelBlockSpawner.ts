@@ -570,27 +570,22 @@ export class LevelBlockSpawner extends Component {
             block.setScale(new Vec3(1, 1, 1));
         }
 
+        const correctPos = block.position.clone();
+        
         if (this.centerVisualToFootprint) {
-            this.alignVisualsToFootprint(block, blockSize);
-            this.applyVisualOffset(block, def.visualOffsetX, def.visualOffsetZ);
             // Hide block during first frame to prevent visible position jump
-            // when scheduleOnce re-aligns visuals after model bounds become available.
-            // Move block far off-screen so it stays active (worldBounds remain valid)
-            // but is not visible to the player.
-            const correctPos = block.position.clone();
-            const correctScale = block.scale.clone();
+            // while waiting for worldBounds to become available on Web Mobile.
             block.setPosition(correctPos.x, -999, correctPos.z);
-            this.scheduleOnce(() => {
+            
+            setTimeout(() => {
                 if (!block.isValid) {
                     return;
                 }
-
                 block.setPosition(correctPos);
-                block.setScale(correctScale);
                 this.alignVisualsToFootprint(block, blockSize);
                 this.applyVisualOffset(block, def.visualOffsetX, def.visualOffsetZ);
                 this.rebuildPickCollider(block, def.shape, blockSize);
-            });
+            }, 50);
         } else {
             this.applyVisualOffset(block, def.visualOffsetX, def.visualOffsetZ);
         }

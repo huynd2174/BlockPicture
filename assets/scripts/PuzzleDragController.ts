@@ -100,7 +100,7 @@ export class PuzzleDragController extends Component {
     dragCollisionFillRatio: number = 0.85;
 
     @property({ range: [0, 1] })
-    dragCollisionCornerRadiusRatio: number = 0.95;
+    dragCollisionCornerRadiusRatio: number = 1.5;
 
     @property
     shatterPopScaleMultiplier: number = 1.15;
@@ -484,7 +484,7 @@ export class PuzzleDragController extends Component {
         }
 
         this.startTimerForFirstDrag();
-        
+
         if (AudioManager.instance) AudioManager.instance.playBlockUp();
 
         this.draggingBlock = block;
@@ -1241,7 +1241,7 @@ export class PuzzleDragController extends Component {
         }
 
         const generation = this.effectGeneration;
-        
+
         if (AudioManager.instance) AudioManager.instance.playBlockMatch();
 
         const spawner = this.node.getComponent(LevelBlockSpawner);
