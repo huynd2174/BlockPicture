@@ -364,12 +364,7 @@ export class LevelBlockSpawner extends Component {
         }
 
         for (const child of [...this.blocksRoot.children]) {
-            // Clean up dynamically created meshes and materials to prevent WebGL memory leak on Restart
-            const mrs = child.getComponentsInChildren(MeshRenderer);
-            for (const mr of mrs) {
-                if (mr.mesh) { mr.mesh.destroy(); mr.mesh = null; }
-                if (mr.material) { mr.material.destroy(); mr.material = null; }
-            }
+            this.cleanupDynamicRenderResources(child);
             child.destroy();
         }
         this.blocksRoot.removeAllChildren();
@@ -379,6 +374,22 @@ export class LevelBlockSpawner extends Component {
 
         for (const def of layout) {
             this.spawnBlock(def);
+        }
+    }
+
+    private cleanupDynamicRenderResources(root: Node) {
+        for (const renderer of root.getComponentsInChildren(MeshRenderer)) {
+            const nodeName = renderer.node.name;
+            if (nodeName !== 'ImageLayer' && nodeName !== 'ImageBorder') {
+                continue;
+            }
+
+            const mesh = renderer.mesh;
+            const material = renderer.material;
+            renderer.mesh = null;
+            renderer.material = null;
+            mesh?.destroy();
+            material?.destroy();
         }
     }
 
