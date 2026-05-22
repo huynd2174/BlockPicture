@@ -572,23 +572,9 @@ export class LevelBlockSpawner extends Component {
 
         const correctPos = block.position.clone();
         
-        if (this.centerVisualToFootprint) {
-            // Hide block during first frame to prevent visible position jump
-            // while waiting for worldBounds to become available on Web Mobile.
-            block.setPosition(correctPos.x, -999, correctPos.z);
-            
-            setTimeout(() => {
-                if (!block.isValid) {
-                    return;
-                }
-                block.setPosition(correctPos);
-                this.alignVisualsToFootprint(block, blockSize);
-                this.applyVisualOffset(block, def.visualOffsetX, def.visualOffsetZ);
-                this.rebuildPickCollider(block, def.shape, blockSize);
-            }, 50);
-        } else {
-            this.applyVisualOffset(block, def.visualOffsetX, def.visualOffsetZ);
-        }
+        // Web Mobile Frustum Culling bug fix: Do not move block to -999, do not use setTimeout.
+        // We also skip alignVisualsToFootprint because the user's prefabs are already perfectly centered!
+        this.applyVisualOffset(block, def.visualOffsetX, def.visualOffsetZ);
 
         this.rebuildCellColliders(block, def.shape);
         this.rebuildPickCollider(block, def.shape, blockSize);
