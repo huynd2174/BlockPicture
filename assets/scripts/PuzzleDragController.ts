@@ -548,6 +548,10 @@ export class PuzzleDragController extends Component {
         this.draggingCurrentRow = targetGrid.row;
         this.desiredDragPosition = new Vec3(collisionWorld.x, this.blockY + this.getEffectiveDragLiftY(), collisionWorld.z);
         this.lastValidDragPosition = this.desiredDragPosition.clone();
+
+        if (this.wouldAssembleGroupAt(this.draggingBlock, targetGrid.col, targetGrid.row)) {
+            this.completeDragAtGrid(targetGrid.col, targetGrid.row);
+        }
     }
 
     private endDrag() {
@@ -582,6 +586,16 @@ export class PuzzleDragController extends Component {
 
         Tween.stopAllByTarget(draggingNode);
         this.desiredDragPosition = null;
+
+        draggingBlock.setGridPosition(finalCol, finalRow);
+        this.setBlockHighlight(draggingNode, false);
+        const shatterStarted = this.wouldAssembleGroupAt(draggingBlock, finalCol, finalRow);
+        if (shatterStarted) {
+            this.checkAndShatterGroup(draggingBlock.colorGroup);
+        } else {
+            this.addBlockToOccupied(draggingBlock);
+        }
+
         tween(draggingNode)
             .parallel(
                 tween().to(this.snapDuration, { position: targetPos }, { easing: 'quadOut' }),
@@ -589,15 +603,41 @@ export class PuzzleDragController extends Component {
                 tween().to(this.snapDuration, { eulerAngles: new Vec3(0, 0, 0) }, { easing: 'quadOut' })
             )
             .call(() => {
-                draggingBlock.setGridPosition(finalCol, finalRow);
-                this.addBlockToOccupied(draggingBlock);
-                this.setBlockHighlight(draggingNode, false);
-                const shatterStarted = this.checkAndShatterGroup(draggingBlock.colorGroup);
                 if (!shatterStarted) {
                     this.checkWin();
                 }
             })
             .start();
+
+        this.draggingBlock = null;
+        this.draggingNode = null;
+        this.draggingBaseScale = null;
+        this.dragPointerOffset.set(0, 0, 0);
+        this.desiredDragPosition = null;
+        this.lastValidDragPosition = null;
+    }
+
+    private completeDragAtGrid(finalCol: number, finalRow: number) {
+        if (!this.draggingBlock || !this.draggingNode) {
+            return;
+        }
+
+        const draggingBlock = this.draggingBlock;
+        const draggingNode = this.draggingNode;
+        const baseScale = this.draggingBaseScale || draggingNode.scale.clone();
+        const targetPos = this.gridToWorldForBlock(draggingBlock, finalCol, finalRow);
+
+        if (AudioManager.instance) AudioManager.instance.playBlockDown();
+
+        Tween.stopAllByTarget(draggingNode);
+        this.desiredDragPosition = null;
+
+        draggingBlock.setGridPosition(finalCol, finalRow);
+        draggingNode.setPosition(targetPos);
+        draggingNode.setScale(baseScale);
+        draggingNode.setRotationFromEuler(0, 0, 0);
+        this.setBlockHighlight(draggingNode, false);
+        this.checkAndShatterGroup(draggingBlock.colorGroup);
 
         this.draggingBlock = null;
         this.draggingNode = null;
@@ -1195,6 +1235,37 @@ export class PuzzleDragController extends Component {
         for (let i = 1; i < groupBlocks.length; i++) {
             const block = groupBlocks[i];
             if (block.col - block.targetCol !== offsetX || block.row - block.targetRow !== offsetY) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private wouldAssembleGroupAt(candidateBlock: DraggableBlock, candidateCol: number, candidateRow: number): boolean {
+        if (!candidateBlock.colorGroup || !this.blocksRoot || this.completedColorGroups.has(candidateBlock.colorGroup)) {
+            return false;
+        }
+
+        const groupBlocks = this.blocksRoot.children
+            .map((child) => child.getComponent(DraggableBlock))
+            .filter((block): block is DraggableBlock => !!block && block.colorGroup === candidateBlock.colorGroup);
+
+        if (groupBlocks.length === 0) {
+            return false;
+        }
+
+        const first = groupBlocks[0];
+        const firstCol = first === candidateBlock ? candidateCol : first.col;
+        const firstRow = first === candidateBlock ? candidateRow : first.row;
+        const offsetX = firstCol - first.targetCol;
+        const offsetY = firstRow - first.targetRow;
+
+        for (let i = 1; i < groupBlocks.length; i++) {
+            const block = groupBlocks[i];
+            const col = block === candidateBlock ? candidateCol : block.col;
+            const row = block === candidateBlock ? candidateRow : block.row;
+            if (col - block.targetCol !== offsetX || row - block.targetRow !== offsetY) {
                 return false;
             }
         }
