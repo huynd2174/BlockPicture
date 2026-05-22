@@ -71,7 +71,7 @@ export class EndgameUIController extends Component {
         // 2. Setup the user's WinPanel
         this.winPanel.active = true;
         this.winPanel.setPosition(Vec3.ZERO);
-        
+
         const winOpacity = this.winPanel.getComponent(UIOpacity) || this.winPanel.addComponent(UIOpacity);
         winOpacity.opacity = 255;
 
@@ -93,7 +93,7 @@ export class EndgameUIController extends Component {
         const spineNode = this.winPanel.getChildByName('WellDoneSpine');
         if (spineNode) {
             // Scale it down so it fits the screen better (0.45 was too big)
-            spineNode.setScale(new Vec3(0.7, 0.7, 1));
+            spineNode.setScale(new Vec3(0.6, 0.6, 1));
 
             const skeleton = spineNode.getComponent(sp.Skeleton);
             if (skeleton) {
@@ -264,7 +264,7 @@ export class EndgameUIController extends Component {
         // 2. Setup the user's LosePanel
         this.losePanel.active = true;
         this.losePanel.setPosition(Vec3.ZERO);
-        
+
         const loseOpacity = this.losePanel.getComponent(UIOpacity) || this.losePanel.addComponent(UIOpacity);
         loseOpacity.opacity = 255;
 
@@ -272,7 +272,7 @@ export class EndgameUIController extends Component {
         if (this.losePanel.parent) {
             this.losePanel.setSiblingIndex(this.losePanel.parent.children.length - 1);
         }
-        
+
         // Find and bind Retry button
         const retryBtnNode = this.losePanel.getChildByName('RetryButton');
         if (retryBtnNode) {

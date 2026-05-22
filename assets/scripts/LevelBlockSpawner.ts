@@ -134,6 +134,12 @@ export class LevelBlockSpawner extends Component {
     blueSquare1ImageOffsetZ: number = 0.28;
 
     @property
+    blueL1ImageOffsetX: number = 0;
+
+    @property
+    blueL1ImageOffsetZ: number = 0;
+
+    @property
     redRec21ImageOffsetX: number = 0;
 
     @property
@@ -254,7 +260,7 @@ export class LevelBlockSpawner extends Component {
     colliderFillRatio: number = 0.92;
 
     @property
-    pickColliderPadding: number = 0.12;
+    pickColliderPadding: number = 1.2;
 
     @property
     square1WorldWidthAtScale1: number = 1.7;
@@ -1576,14 +1582,25 @@ export class LevelBlockSpawner extends Component {
             return this.getRedImageLayerPositionOffset(def, block);
         }
 
-        if (def.colorGroup !== 'blue' || def.id !== 'square_left') {
+        if (def.colorGroup !== 'blue') {
             return new Vec2(0, 0);
         }
 
-        return new Vec2(
-            this.blueSquare1ImageOffsetX / Math.max(0.001, block.scale.x),
-            this.blueSquare1ImageOffsetZ / Math.max(0.001, block.scale.z),
-        );
+        if (def.id === 'square_left') {
+            return new Vec2(
+                this.blueSquare1ImageOffsetX / Math.max(0.001, block.scale.x),
+                this.blueSquare1ImageOffsetZ / Math.max(0.001, block.scale.z),
+            );
+        }
+
+        if (def.id === 'l1_top') {
+            return new Vec2(
+                this.blueL1ImageOffsetX / Math.max(0.001, block.scale.x),
+                this.blueL1ImageOffsetZ / Math.max(0.001, block.scale.z),
+            );
+        }
+
+        return new Vec2(0, 0);
     }
 
     private getGreenImageLayerPositionOffset(def: BlockDef, block: Node): Vec2 {

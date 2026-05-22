@@ -100,7 +100,10 @@ export class PuzzleDragController extends Component {
     dragCollisionFillRatio: number = 0.85;
 
     @property({ range: [0, 1] })
-    dragCollisionCornerRadiusRatio: number = 1.5;
+    dragCollisionCornerRadiusRatio: number = 0.6;
+
+    @property
+    pickHitPaddingCells: number = 0.8;
 
     @property
     shatterPopScaleMultiplier: number = 1.15;
@@ -675,12 +678,13 @@ export class PuzzleDragController extends Component {
         const blockCenter = this.gridToWorldForBlock(block, block.col, block.row);
         const localCol = (world.x - blockCenter.x) / this.cellStepX + (blockSize.cols - 1) * 0.5;
         const localRow = (world.z - blockCenter.z) / this.cellStepZ + (blockSize.rows - 1) * 0.5;
+        const pickPadding = Math.max(0, this.pickHitPaddingCells);
 
         if (
-            localCol < -0.5 ||
-            localCol > blockSize.cols - 0.5 ||
-            localRow < -0.5 ||
-            localRow > blockSize.rows - 0.5
+            localCol < -0.5 - pickPadding ||
+            localCol > blockSize.cols - 0.5 + pickPadding ||
+            localRow < -0.5 - pickPadding ||
+            localRow > blockSize.rows - 0.5 + pickPadding
         ) {
             return false;
         }
@@ -689,14 +693,16 @@ export class PuzzleDragController extends Component {
             return true;
         }
 
-        const nearestCol = Math.round(localCol);
-        const nearestRow = Math.round(localRow);
+        for (const cell of block.shape) {
+            if (
+                Math.abs(localCol - cell.x) <= 0.5 + pickPadding &&
+                Math.abs(localRow - cell.y) <= 0.5 + pickPadding
+            ) {
+                return true;
+            }
+        }
 
-        return (
-            Math.abs(localCol - nearestCol) <= 0.5 &&
-            Math.abs(localRow - nearestRow) <= 0.5 &&
-            this.hasShapeCell(block, nearestCol, nearestRow)
-        );
+        return false;
     }
 
     private isFullRectShape(block: DraggableBlock, blockSize: { cols: number; rows: number }): boolean {
@@ -847,26 +853,29 @@ export class PuzzleDragController extends Component {
             ? new Vec3(this.lastValidDragPosition.x, this.blockY, this.lastValidDragPosition.z)
             : this.gridToWorldForBlock(block, this.draggingCurrentCol, this.draggingCurrentRow);
 
-        if (!this.overlapsOccupiedCells(block, desiredWorld)) {
+        const directSweep = this.sweepToLastClearWorld(block, previousWorld, desiredWorld);
+        if (this.sameWorldPosition(directSweep, desiredWorld)) {
             return desiredWorld.clone();
         }
 
         const candidates: Vec3[] = [
-            this.sweepToLastClearWorld(block, previousWorld, desiredWorld),
+            directSweep,
         ];
         const xOnly = new Vec3(desiredWorld.x, this.blockY, previousWorld.z);
         const zOnly = new Vec3(previousWorld.x, this.blockY, desiredWorld.z);
 
-        if (!this.overlapsOccupiedCells(block, xOnly)) {
+        const xSweep = this.sweepToLastClearWorld(block, previousWorld, xOnly);
+        if (this.sameWorldPosition(xSweep, xOnly)) {
             candidates.push(xOnly);
         } else {
-            candidates.push(this.sweepToLastClearWorld(block, previousWorld, xOnly));
+            candidates.push(xSweep);
         }
 
-        if (!this.overlapsOccupiedCells(block, zOnly)) {
+        const zSweep = this.sweepToLastClearWorld(block, previousWorld, zOnly);
+        if (this.sameWorldPosition(zSweep, zOnly)) {
             candidates.push(zOnly);
         } else {
-            candidates.push(this.sweepToLastClearWorld(block, previousWorld, zOnly));
+            candidates.push(zSweep);
         }
 
         let best = previousWorld;
@@ -891,20 +900,46 @@ export class PuzzleDragController extends Component {
             return fromWorld.clone();
         }
 
-        if (!this.overlapsOccupiedCells(block, toWorld)) {
+        const distance = Vec3.distance(fromWorld, toWorld);
+        if (distance <= 0.0001) {
+            return toWorld.clone();
+        }
+
+        const stepSize = Math.max(0.02, Math.min(this.cellStepX, this.cellStepZ) * 0.12);
+        const steps = Math.max(2, Math.min(96, Math.ceil(distance / stepSize)));
+        let lastClear = fromWorld.clone();
+        let firstBlocked: Vec3 | null = null;
+
+        for (let i = 1; i <= steps; i++) {
+            const t = i / steps;
+            const test = new Vec3(
+                fromWorld.x + (toWorld.x - fromWorld.x) * t,
+                this.blockY,
+                fromWorld.z + (toWorld.z - fromWorld.z) * t,
+            );
+
+            if (this.overlapsOccupiedCells(block, test)) {
+                firstBlocked = test;
+                break;
+            }
+
+            lastClear = test;
+        }
+
+        if (!firstBlocked) {
             return toWorld.clone();
         }
 
         let low = 0;
         let high = 1;
-        const result = fromWorld.clone();
+        const result = lastClear.clone();
 
         for (let i = 0; i < 10; i++) {
             const mid = (low + high) * 0.5;
             const test = new Vec3(
-                fromWorld.x + (toWorld.x - fromWorld.x) * mid,
+                lastClear.x + (firstBlocked.x - lastClear.x) * mid,
                 this.blockY,
-                fromWorld.z + (toWorld.z - fromWorld.z) * mid,
+                lastClear.z + (firstBlocked.z - lastClear.z) * mid,
             );
 
             if (this.overlapsOccupiedCells(block, test)) {
@@ -916,6 +951,10 @@ export class PuzzleDragController extends Component {
         }
 
         return result;
+    }
+
+    private sameWorldPosition(a: Vec3, b: Vec3): boolean {
+        return Math.abs(a.x - b.x) <= 0.0001 && Math.abs(a.z - b.z) <= 0.0001;
     }
 
     private overlapsOccupiedCells(block: DraggableBlock, blockCenterWorld: Vec3): boolean {
