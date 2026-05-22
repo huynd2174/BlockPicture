@@ -333,7 +333,7 @@ export class PuzzleDragController extends Component {
 
         for (const child of this.blocksRoot.children) {
             const block = child.getComponent(DraggableBlock);
-            if (block) {
+            if (block && this.isBlockBlocking(block)) {
                 this.addBlockToOccupied(block);
             }
         }
@@ -548,10 +548,6 @@ export class PuzzleDragController extends Component {
         this.draggingCurrentRow = targetGrid.row;
         this.desiredDragPosition = new Vec3(collisionWorld.x, this.blockY + this.getEffectiveDragLiftY(), collisionWorld.z);
         this.lastValidDragPosition = this.desiredDragPosition.clone();
-
-        if (this.wouldAssembleGroupAt(this.draggingBlock, targetGrid.col, targetGrid.row)) {
-            this.completeDragAtGrid(targetGrid.col, targetGrid.row);
-        }
     }
 
     private endDrag() {
@@ -617,36 +613,6 @@ export class PuzzleDragController extends Component {
         this.lastValidDragPosition = null;
     }
 
-    private completeDragAtGrid(finalCol: number, finalRow: number) {
-        if (!this.draggingBlock || !this.draggingNode) {
-            return;
-        }
-
-        const draggingBlock = this.draggingBlock;
-        const draggingNode = this.draggingNode;
-        const baseScale = this.draggingBaseScale || draggingNode.scale.clone();
-        const targetPos = this.gridToWorldForBlock(draggingBlock, finalCol, finalRow);
-
-        if (AudioManager.instance) AudioManager.instance.playBlockDown();
-
-        Tween.stopAllByTarget(draggingNode);
-        this.desiredDragPosition = null;
-
-        draggingBlock.setGridPosition(finalCol, finalRow);
-        draggingNode.setPosition(targetPos);
-        draggingNode.setScale(baseScale);
-        draggingNode.setRotationFromEuler(0, 0, 0);
-        this.setBlockHighlight(draggingNode, false);
-        this.checkAndShatterGroup(draggingBlock.colorGroup);
-
-        this.draggingBlock = null;
-        this.draggingNode = null;
-        this.draggingBaseScale = null;
-        this.dragPointerOffset.set(0, 0, 0);
-        this.desiredDragPosition = null;
-        this.lastValidDragPosition = null;
-    }
-
     private getStableBaseScale(node: Node): Vec3 {
         const cached = this.baseScales.get(node);
         if (cached) {
@@ -690,7 +656,7 @@ export class PuzzleDragController extends Component {
 
         for (const result of PhysicsSystem.instance.raycastResults) {
             const block = this.findDraggableBlock(result.collider.node);
-            if (!block || !this.canPickBlockAtWorld(block, result.hitPoint)) {
+            if (!block || !this.isBlockBlocking(block) || !this.canPickBlockAtWorld(block, result.hitPoint)) {
                 continue;
             }
 
@@ -1212,6 +1178,10 @@ export class PuzzleDragController extends Component {
     }
 
     private addBlockToOccupied(block: DraggableBlock) {
+        if (!this.isBlockBlocking(block)) {
+            return;
+        }
+
         for (const cell of block.shape) {
             this.occupied.set(this.key(block.col + cell.x, block.row + cell.y), block);
         }
@@ -1221,6 +1191,10 @@ export class PuzzleDragController extends Component {
         for (const cell of block.shape) {
             this.occupied.delete(this.key(block.col + cell.x, block.row + cell.y));
         }
+    }
+
+    private isBlockBlocking(block: DraggableBlock): boolean {
+        return block.enabled && (!block.colorGroup || !this.completedColorGroups.has(block.colorGroup));
     }
 
     private isGroupAssembled(groupBlocks: DraggableBlock[]): boolean {
