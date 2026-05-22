@@ -93,6 +93,7 @@ export class GameHUDController extends Component {
     private targetBaseScales: WeakMap<Node, Vec3> = new WeakMap();
     private targetIntroGeneration = 0;
     private targetCollectGeneration = 0;
+    private restartGeneration = 0;
     private targetCollectStops: Set<() => void> = new Set();
     private starGraphics: Graphics | null = null;
     private stars: Array<{ x: number, y: number, radius: number, alpha: number, speedX: number, speedY: number, blinkSpeed: number, blinkPhase: number }> = [];
@@ -138,22 +139,22 @@ export class GameHUDController extends Component {
         }
     }
 
-    public restartLevel(animated: boolean = true) {
-        if (this.isRestarting) {
+    public restartLevel(animated: boolean = true, force: boolean = false) {
+        if (this.isRestarting && !force) {
             return;
         }
 
+        const restartGeneration = ++this.restartGeneration;
         this.resolveSceneReferences();
         this.captureBaseScales();
 
         if (!animated) {
+            this.isRestarting = true;
             this.performRestartNow();
             this.playTargetIntroEffect(() => {
-                this.isRestarting = false;
-                if (this.restartButton) {
-                    this.restartButton.interactable = true;
-                }
+                this.finishRestart(restartGeneration);
             });
+            this.scheduleRestartFallback(restartGeneration);
             return;
         }
 
@@ -166,23 +167,51 @@ export class GameHUDController extends Component {
         this.playReplayButtonEffect();
         this.performRestartNow();
         this.playTargetIntroEffect(() => {
-            this.isRestarting = false;
-            if (this.restartButton) {
-                this.restartButton.interactable = true;
-            }
+            this.finishRestart(restartGeneration);
         });
+        this.scheduleRestartFallback(restartGeneration);
     }
 
     private performRestartNow() {
+        this.resolveSceneReferences();
         this.cleanUpTargetEffects();
         this.dragController?.resetPuzzleState();
         this.levelSpawner?.spawnLevel();
         this.dragController?.resetPuzzleState();
+        this.dragController?.rebuildOccupied();
         this.resetTargetItems();
         this.resetTimer();
 
         if (this.autoStartTimer) {
             this.startTimer();
+        }
+    }
+
+    private scheduleRestartFallback(restartGeneration: number) {
+        this.scheduleOnce(() => {
+            if (restartGeneration !== this.restartGeneration) {
+                return;
+            }
+
+            if ((this.levelSpawner?.blocksRoot?.children.length || 0) === 0) {
+                this.levelSpawner?.spawnLevel();
+                this.dragController?.resetPuzzleState();
+                this.dragController?.rebuildOccupied();
+            }
+
+            this.finishRestart(restartGeneration);
+        }, Math.max(0.8, this.targetIntroDuration + this.targetIntroStagger * 8 + 0.2));
+    }
+
+    private finishRestart(restartGeneration: number) {
+        if (restartGeneration !== this.restartGeneration) {
+            return;
+        }
+
+        this.isRestarting = false;
+        this.dragController?.setInputLocked(false);
+        if (this.restartButton?.isValid) {
+            this.restartButton.interactable = true;
         }
     }
 
@@ -341,11 +370,8 @@ export class GameHUDController extends Component {
 
     private onRestartButtonClicked() {
         if (AudioManager.instance) AudioManager.instance.playClickBtn();
-        if (this.isRestarting) {
-            return;
-        }
 
-        this.restartLevel(true);
+        this.restartLevel(true, true);
     }
 
     private captureBaseScales() {
